@@ -20,9 +20,10 @@ mistakes — rather than teaching the language from scratch.
 **Never use any of them as a variable name.** Use `response`, `res`,
 `outcome`, `ret`, etc. instead.
 
-- `RESULT` — set by unassigned message sends and `CALL` that return a
-  value. Assigned sends (`x = obj~method`) do NOT update it, but
-  unassigned sends (`obj~method`) DO. A bare `RETURN` drops it.
+- `RESULT` — set by unassigned message sends and `CALL`: to the value
+  returned, or **dropped** when nothing is returned. Assigned sends
+  (`x = obj~method`) do NOT touch it, but unassigned sends
+  (`obj~method`) DO.
 - `RC` — set by `ADDRESS` commands (command instructions). Equally
   dangerous if the program uses command instructions.
 - `SIGL` — set by `CALL` and `SIGNAL` to the source line number.
@@ -30,9 +31,12 @@ mistakes — rather than teaching the language from scratch.
 - `SUPER` — the superclass scope inside a method.
 
 ```rexx
--- WRONG: result gets overwritten by the ~setEntry send
+-- WRONG: result gets clobbered by the unassigned ~setEntry send
 result = .Directory~new
-result~setEntry("status", "200")   -- RESULT is now "200"!
+result~setEntry("status", "200")   -- setEntry returns nothing: RESULT is
+                                   -- dropped, and result is now "RESULT"!
+                                   -- (a send that returns a value, like
+                                   -- ~hasIndex, would leave that value)
 
 -- RIGHT: use a different name
 response = .Directory~new
@@ -204,24 +208,28 @@ attribute — like the increment above.
 `x[f(n)] += 1` becomes `x[f(n)] = x[f(n)] + 1` — evaluates `f(n)`
 twice. Be aware when the left-hand side has side effects.
 
-### 9. Use `=` for equality, reserve `==` for identity
+### 9. `=` is non-strict, `==` is strict
 
-`=` is non-strict (strips blanks, compares numerically). `==` is
-strict (character-by-character for strings, object identity for
-non-strings).
+`=` is non-strict: it ignores leading and trailing blanks, and
+compares numerically when both sides are numbers (`"1.0" = "1"` and
+`" a" = "a"` are both true). `==` is strict: character by character
+for strings, and for other objects whatever their class defines,
+which is object identity unless the class says otherwise.
 
-This matters with objects that have `makeString` (e.g., sentinel
-classes like `YamlBoolean`): `=` compares string representations,
-`==` compares identity.
+Some classes do say otherwise. `.LogicalWrapper` (ooRexx 5.3.0, the
+base of `.JsonBoolean` and `.YamlBoolean`) compares by its logical
+value with both operators:
 
 ```rexx
-.YamlBoolean~true =  1    -- 1 (true: equality)
-.YamlBoolean~true == 1    -- 0 (false: different objects)
+.LogicalWrapper~true =  1    -- 1
+.LogicalWrapper~true == 1    -- 1 as well: == is not identity here
 ```
 
-**Rule of thumb**: default to `=`. Use `==` for strict string
-comparison or identity checks (`.nil` tests). In test assertions,
-always use `=`.
+**Rule of thumb**: default to `=` for ordinary comparisons; use `==`
+when the exact characters matter, and for `.nil` tests. **In tests,
+use `assertSame`** (it compares with `==`), not `assertEquals` (it
+compares with `=`, so `"1.0"` would pass for `"1"`); use
+`assertEquals` only when non-strict equality is really what is meant.
 
 ### 10. `stem. = value` resets the entire stem
 
@@ -294,7 +302,8 @@ Do not rely on key order. For sorted keys: `~allIndexes~sort`.
 ### Use `makeString('L', separator)` for array-to-string
 
 ```rexx
--- WRONG: first argument is treated as type
+-- WRONG: the first argument is the type ("L" or "C"):
+-- Error 93.915: Method option must be one of "CL"
 arr~makeString("0A"x)
 
 -- RIGHT
