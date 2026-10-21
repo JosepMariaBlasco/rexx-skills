@@ -14,7 +14,15 @@ description: >
 ```bash
 apt-get update -qq && apt-get install -y -qq apache2 regina-rexx
 a2enmod cgid actions
+a2disconf serve-cgi-bin
 ```
+
+The last line matters if you use `/cgi-bin/` as below. Debian and
+Ubuntu's Apache enables `serve-cgi-bin.conf` by default, which has
+its own `ScriptAlias /cgi-bin/ /usr/lib/cgi-bin/`, and that one wins:
+a request for `/cgi-bin/foo.rex` then gives a 404, with `script not
+found or unable to stat: /usr/lib/cgi-bin/foo.rex` in the error log.
+Disable it (or use another URL prefix for your scripts).
 
 Run `apt-get update` first: a stale package index can make the Apache
 `.deb` fetches 404.
