@@ -1,276 +1,213 @@
 ---
 name: oorexx-docbook-build
 description: >
-  How to reproduce the official ooRexx documentation build (DocBook +
-  Publican layout + Apache FOP) in a Linux environment, and add Rexx
-  syntax highlighting to the program listings. Covers getting the
-  sources over svn-https, the official build scripts plus the Rexx
-  Parser's drop-in highlighting tools (`hldocprep`/`hldoc2pdf`), and the
-  Common_Content. Read this whenever you need to build an ooRexx book to
-  PDF, with or without highlighting.
+  How to build an ooRexx documentation book (DocBook, the official
+  bldoc_orx scripts, Apache FOP) to PDF and to chunked HTML, with
+  Rexx syntax highlighting, on Linux: the hl* scripts (hldocprep,
+  hldoc2pdf, hldoc2HTML) plus the Rexx Parser. Covers getting the
+  sources over svn, the build, rebuilding after an edit, marking
+  listings for highlighting, and the traps. Read this whenever you
+  need to build an ooRexx book, official or your own.
 ---
 
-# Building official ooRexx literature (with highlighting)
+# Building ooRexx books (with highlighting)
 
-This skill builds an ooRexx documentation book to a PDF that looks like
-the official ones (cover, brand colours, admonitions) and, optionally,
-colours its Rexx listings using the Rexx Highligher distributed as
-part of the Rexx Parser.
+The official ooRexx books are DocBook 4.5 sources, built by the scripts
+in the documentation tree's `tools/bldoc_orx/`: to PDF through
+`xsltproc` and Apache FOP, and to chunked HTML through the DocBook
+XHTML stylesheets. The **hl\* series** in the same folder (`hldocprep`,
+`hldoc2fo`, `hldoc2pdf`, `hldoc2HTML`) does the same and also colours
+the Rexx listings, using the Rexx Highlighter of the Rexx Parser. The
+result looks like the official books (cover, colours, admonitions).
 
-The recipe assumes a Linux environment with command-line tools, the Rexx
-Parser project checked out in a directory referred to below as `$PARSER`,
-the official build scripts from svn (`$BLDOC`), and the ooRexx docs laid
-out as docpath expects (`$DOCS`). Adjust all three to your own machine.
+> **Tested** on 21 October 2026 on Ubuntu 24.04 with ooRexx 5.3.0
+> r13282, the documentation trunk's `tools/bldoc_orx` (last changed in
+> SVN r13235), the Rexx Parser's `Rexx-Parser-latest.zip` of that day,
+> FOP 2.8 and docbook-xsl 1.79: the RexxHTTP manual (83 pages of PDF,
+> 182 HTML pages) built with no errors.
+>
+> **Requires `oorexx-run`** (the whole toolchain runs on ooRexx). If a
+> book builds railroad diagrams from EBNF, that is a separate step: see
+> the `ebnf2svg` skill.
+>
+> **Environment note.** The paths below (`/work/...`) are placeholders.
+> The commands assume Debian/Ubuntu; run them as root or with `sudo`.
+> The documentation tree's `setup.rex` is Windows-only: on Linux the
+> toolchain is set up by hand, as here.
 
-## Setup (do these in order)
+## Setup (once)
 
-1. **Install ooRexx** — the whole toolchain runs on it. Follow the
-   install steps in the companion skill `oorexx-run.md`, which you should
-   have received alongside this one. Use it — do not install ooRexx by any
-   other route (SourceForge guesswork, building from source, apt); those
-   steps are kept current in that skill, and reconstructing them by hand
-   wastes time and drifts from the tested method. **If you did not receive
-   `oorexx-run.md`, stop and tell the user** rather than improvising an
-   install.
+1. **ooRexx**, with the `oorexx-run` skill.
 
-2. **Check out the Rexx Parser project** — it provides the highlighting
-   engine in `bin/` and the DocBook tools in `bin/docbook/`. Download it
-   from <https://rexx.epbcn.com/rexx-parser/Rexx-Parser-latest.zip> (the
-   canonical source, not GitHub — it usually carries the latest patches
-   before GitHub does).
+2. **The packages:**
 
-3. **Install the apt packages:**
-   `apt-get install -y subversion fop xsltproc docbook-xsl docbook-xml libxml2-utils poppler-utils`
-   (poppler-utils only to rasterise/verify the PDF).
+   ```bash
+   apt-get install -y subversion fop xsltproc docbook-xsl docbook-xml \
+                      libxml2-utils fonts-liberation poppler-utils
+   ```
 
-If the session needs to build railroad diagrams from EBNF, that's a
-separate task — use the companion skill `ebnf2svg.md` (received alongside
-this one). If you need it and did not receive it, stop and tell the user.
+   `fonts-liberation` gives the fonts the stylesheets ask for (FOP finds
+   them by itself: `fop.cfg` has `<auto-detect/>`); `poppler-utils` is
+   only for checking the PDF. With Debian's `docbook-xsl`, the remote
+   stylesheet URLs that `pdf.xsl` and `html.xsl` import resolve to the
+   local copy through the system XML catalog: no network is needed for
+   the build.
 
-## Key facts (the non-obvious ones)
+3. **The Rexx Parser**, from its canonical site (it carries the latest
+   fixes before GitHub does):
 
-- **Prefer `https://svn.code.sf.net/...`** for checkout/export/diff. The
-  native `svn://` protocol is often blocked by firewalls and proxies in
-  sandboxed environments; the `https://` form behaves identically and
-  works through them.
-- **The book layout is Publican's, but the build does NOT run Publican.**
-  The sources follow the Publican convention — `publican.cfg`, `en-US/`,
-  `Common_Content/` — so the obvious move is to install the `publican`
-  tool and run it. Don't: the toolchain reproduces that convention
-  without invoking the executable. `docprep` copies the Common_Content by
-  hand; `doc2fo` is just `xsltproc pdf.xsl`; `fo2pdf` is just `fop`.
-- **The "official look" lives entirely in `pdf.xsl` + `defaults.xsl` +
-  `Common_Content`** — there is no magic Publican brand to replicate. The
-  cover comes from `Book_Info.xml` + `Common_Content/images/oorexx.jpg`,
-  rendered by docbook-xsl.
-- **Highlighting in production does NOT use the `highlight.rex` CLI.**
-  The Rexx Parser ships a standalone command-line highlighter,
-  `highlight.rex`, and it is the obvious tool to reach for — but it is
-  the wrong one here. The production path is different: `hldocprep` loads
-  `Parser.DocBook.cls` and calls its `::Routine ProcessProgramListings`
-  to colour each listing, and the matching XSL is generated separately by
-  `css2xsl --style STYLE`. The colouring carries fine-grained token
-  classes (operators, specials, constants, and so on — see the attribute
-  table below), and those classes only line up with the style definitions
-  when both come from this pairing. Highlight with the standalone CLI
-  instead, and the listings still render, but their token granularity no
-  longer matches the generated XSL, so colours land on the wrong tokens —
-  a failure that produces output and so is easy to miss.
+   ```bash
+   curl -sLO https://rexx.epbcn.com/rexx-parser/Rexx-Parser-latest.zip
+   unzip -qo Rexx-Parser-latest.zip -d /work/rexx-parser
+   export REXX_PATH=/work/rexx-parser/bin
+   ```
 
-## Where the pieces live in svn
+   Only its `bin/` has to be on `REXX_PATH` (or `PATH`); the HTML build
+   finds the Parser's `css/` and `js/` from there. Nothing is copied
+   into the build scripts.
 
-Documentation trunk: `https://svn.code.sf.net/p/oorexx/code-0/docs/trunk`
+4. **The documentation tree**, laid out as the scripts expect: each
+   book in `$DOCS/<book>/` (with `publican.cfg` and `en-US/`), and the
+   shared Common_Content in `$DOCS/oorexx/`. The scripts themselves can
+   live anywhere. Use the `https://` form of the SVN URL (the `svn://`
+   protocol is often blocked by proxies):
 
-| What | Path under the trunk |
-|---|---|
-| A book's sources | `<bookname>/` (e.g. `rexxref/`, `rexxextensions/`) |
-| Build tools | `tools/bldoc_orx/` (`pdf.xsl`, `defaults.xsl`, `fop.cfg`, `*.rex`) |
-| **Official Common_Content** | `oorexx/en-US/` (logo, Notices, CPL, Conventions, admonition images) |
-| Liberation fonts | `tools/LiberationFonts/` |
-| DRAFT watermark | `oorexx/en-US/images/watermark-draft.png` |
+   ```bash
+   TRUNK=https://svn.code.sf.net/p/oorexx/code-0/docs/trunk
+   DOCS=/work/docs
+   svn checkout $TRUNK/tools/bldoc_orx /work/bldoc_orx   # the scripts, hl* included
+   svn checkout $TRUNK/oorexx          $DOCS/oorexx      # the Common_Content
+   svn checkout $TRUNK/rexxref         $DOCS/rexxref     # a book (skip for your own)
+   ```
 
-The new highlighting tools (`hldocprep`/`hldoc2fo`/`hldoc2pdf` + a
-highlighting-aware `pdf.xsl`) live in the **Rexx Parser** project, in
-`bin/docbook/`. That `pdf.xsl` is currently a verbatim copy of the official
-one — byte-for-byte identical. Neither version embeds the `rexx_*`
-highlighting templates; those are generated separately by css2xsl and pulled
-in via the driver XSL.
+   A book of your own goes in the same layout, `$DOCS/<book>/`. `svn
+   export` instead of `checkout` works too; the only difference is that
+   `docprep` asks `svnversion` for the book's revision and prints a
+   harmless `svn: E155007: ... is not a working copy`.
+
+5. **Point the scripts at the tree**, from the scripts' folder (it
+   saves the path in the scripts' properties; redo it only if `$DOCS`
+   changes):
+
+   ```bash
+   cd /work/bldoc_orx
+   rexx docpath $DOCS        # → The docpath is set to /work/docs
+   ```
+
+## Build
+
+From `/work/bldoc_orx`, with `REXX_PATH` set as above:
+
+```bash
+rexx hldoc2pdf <book>        # → pdf_files/<book>.pdf
+rexx hldoc2HTML <book>       # → html_folders/<book>/ and html_zipfiles/<book>.zip
+```
+
+Given the book name, each one first runs `hldocprep <book>`, which does
+everything the official `docprep` does (it copies the book and the
+Common_Content into `work_folder/`) and then highlights every
+`<programlisting language="rexx">` and generates the XSL the PDF and the
+HTML need (`hl-styles/`, `rexx-highlights.xsl`, `pdf-hl.xsl`,
+`rexx-highlights-html.xsl`, `html-hl.xsl`, all in the scripts'
+folder). Its log says what it did:
+
+```
+44 block(s) highlighted in 6 file(s).
+1 style(s) found: print.
+```
+
+The steps can also be run one by one: `rexx hldocprep <book>`, then
+`rexx hldoc2fo`, then `rexx fo2pdf` (or `rexx hldoc2pdf` / `rexx
+hldoc2HTML` with no book name, to reuse the prepared work folder).
+`hldocprep` takes two options before the book name: `--style S` (the
+default style for listings that do not name one; default `print`) and
+`--regen` (regenerate all the XSL; needed after updating the Parser).
+
+**Rebuilding after an edit:** edit the sources in `$DOCS/<book>/en-US/`
+(that is what the scripts read) and run `rexx hldoc2pdf <book>` again.
+The work folder is rebuilt from the sources each time, so repeated runs
+are safe.
+
+**Checking the result:**
+
+```bash
+pdfinfo pdf_files/<book>.pdf | grep Pages
+pdftoppm -png -r 80 -f 10 -l 10 pdf_files/<book>.pdf page   # look at a page with code
+```
+
+**Without highlighting**, the official pair still works from the same
+sources: `rexx docprep <book>` then `rexx doc2pdf`. For HTML on Linux,
+use `hldoc2HTML` even then: the stock `doc2HTML` looks for the Common
+Content in `ooRexx` while the folder is `oorexx`, copies nothing
+("0 files copied"), and the book comes out with no stylesheet at all.
+
+## Marking listings for highlighting
+
+Only listings with `language="rexx"` are highlighted; the others are
+left alone, so a book can be migrated a few listings at a time:
+
+```xml
+<programlisting language="rexx">Say "Hello, world!"</programlisting>
+```
+
+Per-listing attributes:
+
+| Attribute | Values | Default |
+|---|---|---|
+| `hl-style` | any of the Parser's styles (`print`, `dark`, ...) | `print` |
+| `operator` / `special` / `constant` / `assignment` | `group` / `full` / `detail` | `group` |
+| `doccomments` | `detailed` / `block` | `detailed` |
+| `dialect` | `executor` / `cms` / `rexxvm` / `tutor` / `unicode` / `experimental` | none (ooRexx) |
+
+`hl-style` (not `style`: the DTD would drop an unknown attribute) also
+pins the listing in the HTML, where the reader can otherwise switch
+styles with the style chooser. A book may use several styles; the
+scripts find the ones in use.
 
 ## Book layout (Publican / DocBook 4.5)
 
 ```
-publican.cfg                 brand: oorexx, mainfile: <id>
+publican.cfg                 brand: oorexx, mainfile: <book>
 en-US/
-  <id>.xml                   mainfile: xi:include of every component
-  <id>.ent                   entities (VERSION, EDITION, ...)
-  Book_Info.xml              title/subtitle/cover (xi:includes Legal_Notice + Author_Group)
-  Author_Group.xml
-  Preface.xml
-  <chapter>.xml              one per chapter
-  Revision_History.xml
-  Common_Content/            from svn oorexx/en-US/ (logo, Notices, CPL, images)
-```
-Every file starts with the DOCTYPE for its root element + the BOOK_ENTITIES
-declaration + the standard CPL licence comment block. Clone an existing
-book (e.g. `rexxextensions`) for exact boilerplate.
-
-## Build recipe (official tools, official look + highlighting)
-
-The Rexx Parser ships three drop-in companions to the official build
-scripts — `hldocprep` (highlighted docprep), `hldoc2fo`, `hldoc2pdf`.
-Use them directly: they reproduce the whole production path, including
-the parts that are easy to get wrong by hand (discovering every style
-the book actually uses, generating one XSL per style with `css2xsl`,
-gluing them together, and injecting the result into a `pdf-hl.xsl`
-derived from the official `pdf.xsl`). Don't hand-roll the highlighting
-loop — these tools are the production path.
-
-The recipe splits in two: a **one-time setup** (get the scripts, drop in
-the highlighting tools) and a **rebuild** you run after every source edit.
-Keeping them separate is the point — most build failures come from
-half-remembering the rebuild steps, so the rebuild is packaged as an
-idempotent script you can rerun blindly.
-
-### Setup (once)
-
-Set `PARSER` to the Rexx Parser checkout, `DOCS` to a directory laid out
-as docpath expects (`$DOCS/<book>/en-US` for each book, plus
-`$DOCS/oorexx/en-US` for the Common_Content), and `BLDOC` to where the
-official build scripts will live; adjust all to your machine.
-
-```bash
-export PARSER=/path/to/rexx-parser
-export DOCS=/path/to/oorexx-docs        # holds <book>/ and oorexx/ trees
-export BLDOC=/path/to/tools/bldoc_orx   # the official build scripts (svn)
-TRUNK=https://svn.code.sf.net/p/oorexx/code-0/docs/trunk
-
-# 0. Get the official build scripts, the book, and the Common_Content.
-#    docpath expects $DOCS/<book>/en-US for the book and $DOCS/oorexx/en-US
-#    for the shared Common_Content. (A book of your own goes in the same
-#    layout: put its sources under $DOCS/<book>/en-US.)
-svn export --force $TRUNK/tools/bldoc_orx $BLDOC
-svn export --force $TRUNK/<book>          $DOCS/<book>     # skip if the book is your own
-svn export --force $TRUNK/oorexx          $DOCS/oorexx     # Common_Content
-
-# 1. Put the Parser's highlighting tools alongside the official scripts,
-#    and use the Parser's highlighting-aware pdf.xsl. (The readme calls
-#    this a drop-in: no official file needs editing.)
-cp $PARSER/bin/docbook/hldocprep.rex $PARSER/bin/docbook/hldoc2fo.rex \
-   $PARSER/bin/docbook/hldoc2pdf.rex $BLDOC/
-cp $PARSER/bin/docbook/pdf.xsl $BLDOC/pdf.xsl
-
-# 2. Parser bin on REXX_PATH so the highlighting engine is found.
-export REXX_PATH="$PARSER/bin:$PARSER/bin/docbook"
+  <book>.xml                 the main file: xi:include of every component
+  <book>.ent                 entities (VERSION, EDITION, ...)
+  Book_Info.xml              title, subtitle, cover
+  Preface.xml, <chapter>.xml ...
+  images/
 ```
 
-That is the **one-time setup**: get the scripts, drop in the Parser's
-tools, set `REXX_PATH`. You do NOT repeat it after a source edit. The
-build itself is the next section.
+Every file starts with the DOCTYPE of its root element and the book's
+entity declaration. Clone an existing book (`rexxextensions`, say) for
+the exact boilerplate. The layout is Publican's, but **the build does
+not run Publican**: do not install it. `docprep` copies the Common
+Content itself, `doc2fo` is `xsltproc` with `pdf.xsl`, `fo2pdf` is
+`fop`.
 
-### Rebuild (run after EVERY source edit)
+## Traps
 
-**Use the `oorexx-docbook-rebuild.sh` script shipped alongside this
-skill.** It is idempotent — safe to run repeatedly — and it does, in the
-right order, the four things that are easy to forget and that produce
-misleading errors when skipped (see the troubleshooting table). Do not
-hand-run `hldocprep`/`hldoc2pdf` from memory between edits; that is
-exactly where the "Unable to find fo_files" and stale-`whichdoc` traps
-bite. Run the script:
+- **Do not highlight with the `highlight.rex` command line** and paste
+  the result. The book path is `hldocprep`, which highlights through
+  `Parser.DocBook.cls` and generates the XSL that matches it. The
+  output is standard DocBook (`<phrase role="rx-kw">...`, with the
+  style on the listing's `role`, `highlight-rexx-print`), so a
+  highlighted book still validates.
+- **Old highlighted XML** (before July 2026) used invented elements
+  (`<rexx_print_kw>`...). Re-highlight from clean sources and run
+  `hldocprep --regen`.
+- **Code with no colour, and no error**: the listing's style and the
+  generated XSL do not match. Run `hldocprep --regen <book>`.
+- **`Warning: highlighting failed for block at line N`**: that listing
+  does not parse (a fragment out of context, say an `Expose` outside a
+  method, or a dialect's syntax: try `dialect=`). The block is left
+  uncoloured and the build goes on.
+- **`hldocprep` cannot find the Rexx Parser** ("Please ensure that the
+  Rexx Parser's bin/ directory is on your PATH or REXX_PATH"): set
+  `REXX_PATH` as in the setup, in the same shell.
+- **FOP cannot overwrite a PDF that is open** in a reader: close it
+  before rebuilding.
+- In the browser console of the HTML, `ReferenceError: $ is not
+  defined` comes from the official XHTML stylesheets, in a plain build
+  too. Harmless.
 
-```bash
-export PARSER=/path/to/rexx-parser
-export DOCS=/path/to/oorexx-docs
-export BLDOC=/path/to/tools/bldoc_orx
-bash oorexx-docbook-rebuild.sh <book> <path-to-live-source>/en-US
-# e.g. bash oorexx-docbook-rebuild.sh rexxhttp \
-#        /home/claude/state/docbook-tree/rexxhttp/en-US
-# -> pdf_files/<book>.pdf ; prints the page count
-```
-
-The **live source is the tree you edit** (for this project,
-`state/docbook-tree/<book>/en-US`), which is NOT the same directory the
-build reads (`$DOCS/<book>/en-US`). The script's first job is to copy
-the former into the latter, so an edit that isn't copied over is an edit
-the build never sees — the single most common "why didn't my change
-show up" cause. Passing the live source path to the script handles this
-for you.
-
-What the script does, and why each step matters (the same four things,
-if you ever build by hand):
-
-1. **Refresh `$DOCS/<book>/en-US` from the live source.** docpath reads
-   only from `$DOCS`; the tree you edit lives elsewhere. Skip this and
-   you build the previous version.
-2. **Clean `work_folder` and the XSL artifacts.** Re-highlighting an
-   already-highlighted file fails with `Unmatched comment delimiter /*`.
-   Always start highlighting from clean sources.
-3. **`mkdir -p fo_files pdf_files log_files`.** `hldoc2fo` reads the
-   `fo_files` property (relative path, default `fo_files/`) and bails
-   with `Unable to find fo_files.` if the directory is absent — it does
-   NOT create it. The message reads like missing *input*; it is a
-   missing *output dir*. This is the trap that looks like a broken build
-   but is a missing `mkdir`.
-4. **Re-run `docpath.rex $DOCS`.** It writes `bldoc.env`, the properties
-   file that `hldocprep`/`hldoc2fo` read for `whichdoc`, `fo_files`, etc.
-   A fresh shell (or a wiped tree) has no `bldoc.env`; without this step
-   `whichdoc` is empty and the FO step can't find its inputs.
-
-Then it runs `hldocprep <book>` (prep + highlight + generate all XSL)
-and `hldoc2pdf`, and prints the page count. Eyeball a page to confirm
-highlighting:
-
-```bash
-pdftoppm -png -r 120 -f 1 -l 1 pdf_files/<book>.pdf cover
-```
-
-### Troubleshooting (the misleading messages, decoded)
-
-| Message | Real cause | Fix |
-|---|---|---|
-| `Unable to find fo_files.` | Output dir missing (not input). | `mkdir -p fo_files pdf_files log_files` before the FO step. |
-| `Unmatched comment delimiter /*` | Re-highlighting an already-highlighted file. | Clean `work_folder` and rebuild from fresh source. |
-| `whichdoc`/`fo_files` empty; FO step finds nothing | `bldoc.env` absent or stale (fresh shell, wiped tree). | Re-run `rexx docpath.rex $DOCS` before `hldocprep`. |
-| Edit didn't show up in the PDF | Edited the live tree but built `$DOCS`, which wasn't refreshed. | Re-copy live source into `$DOCS/<book>/en-US` (the script's step 1). |
-| `hldoc2pdf` skips XSL: `... already exists` after a partial clean | Half-cleaned tree: some XSL survived, some didn't. | Clean ALL of `work_folder fo_files pdf_files hl-styles rexx-highlights.xsl pdf-hl.xsl`, then rebuild. |
-
-Notes on this path:
-
-- **The unhighlighted build is the same minus highlighting:** `docprep
-  <book>` then `doc2pdf`. Both builds read the same sources and only
-  touch the work folder; the originals are never modified.
-- **`hldocprep` runs `docprep` for you** — it copies the Common_Content,
-  builds the work folder, highlights every `<programlisting
-  language="rexx">`, then generates `hl-styles/`, `rexx-highlights.xsl`
-  and `pdf-hl.xsl`. The DRAFT watermark and FOP base-dir are handled by
-  the official scripts; no manual driver XSL or `fop.cfg` surgery needed.
-- **Offline?** Only then do you need an XML catalog to resolve the remote
-  docbook-xsl import in `pdf.xsl` to a local copy. Point
-  `XML_CATALOG_FILES` at a catalog that rewrites
-  `http://cdn.docbook.org/release/xsl-nons/current/` and
-  `http://docbook.sourceforge.net/release/xsl/current/` to your local
-  `docbook-xsl` directory. With network access this is unnecessary.
-
-## Enabling highlighting in the source
-
-Mark a listing with `language="rexx"`; unmarked listings are left alone.
-Per-listing attributes on `<programlisting>` (handled by
-`Parser.DocBook.cls~BuildOptions`):
-
-| Attribute | Values | Default |
-|---|---|---|
-| `hl-style` | any style | `print` |
-| `operator` / `special` / `constant` / `assignment` | `group` / `full` / `detail` | `group` |
-| `doccomments` | `detailed` / `block` | `detailed` |
-| `dialect` | `executor` / `cms` / `rexxvm` / `tutor` / `unicode` / `experimental` | (none = standard ooRexx) |
-
-The `dialect` attribute is rarely needed; use it only when a listing
-contains dialect-only constructs (e.g. Executor's `::EXTENSION`). Without
-it, those constructs fail to parse and the block is left un-highlighted.
-
-## Known defects / open points
-
-- Cover logo etc. all resolve once Common_Content is the official one;
-  `hldoc2pdf` (via the official `fo2pdf`) handles the FOP base-dir.
-- 80-column lines: the official `shade.verbatim` style sets
-  `wrap-option: wrap` (hyphen char `\`), which wraps long listings
-  cleanly — no need to shrink the font.
+The Parser documents all of this in more depth in
+`doc/highlighter/docbook/readme.md` (in its zip).

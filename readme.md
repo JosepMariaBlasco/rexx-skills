@@ -56,15 +56,16 @@ and how the orchestrator chains generation and SVG extraction.
 
 Works with: Claude.
 
-[**oorexx-docbook-build**](oorexx-docbook-build.md) — Build the official
-ooRexx documentation books (DocBook + Publican layout + Apache FOP) to PDF,
-with optional Rexx syntax highlighting on the program listings.
+[**oorexx-docbook-build**](oorexx-docbook-build.md) — Build ooRexx
+documentation books (DocBook + Publican layout + Apache FOP) to PDF and to
+chunked HTML, with Rexx syntax highlighting on the program listings.
 Requires [`oorexx-run`](oorexx-run.md), and [`ebnf2svg`](ebnf2svg.md)
 only if a book builds railroad diagrams from EBNF.
-Covers checking out the sources over svn-https, the official build scripts plus
-the Rexx Parser's drop-in highlighting tools (`hldocprep`/`hldoc2pdf`),
-the `docpath` layout for a book of your own, and the traps that bite
-(the wrong `highlight.rex` shortcut, re-highlighting a clean checkout).
+Covers checking out the sources over svn-https, the official build scripts
+and their highlighting companions (`hldocprep`, `hldoc2pdf`, `hldoc2HTML`)
+with the Rexx Parser, the `docpath` layout for a book of your own,
+rebuilding after an edit, and the traps that bite
+(the wrong `highlight.rex` shortcut, old highlighted XML, the stock `doc2HTML` on Linux).
 
 Works with: Claude.
 
