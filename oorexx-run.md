@@ -1,23 +1,14 @@
 ---
 name: oorexx-run
 description: >
-  How to install and run ooRexx. Pinned to the ooRexx 5.3.0beta
-  release branch (latest build of that branch). Covers
-  installation from SourceForge, running programs, the ::Requires
-  search path, and common errors. Read this whenever you need to
-  install or execute ooRexx code.
+  How to install and run ooRexx. Three choices: the tested 5.3.0
+  beta revision (r13282, the default), the latest 5.3.0 beta build,
+  or the 5.2.0 release. Covers installation from SourceForge,
+  running programs, the ::Requires search path, and common errors.
+  Read this whenever you need to install or execute ooRexx code.
 ---
 
 # ooRexx — Installing and Running
-
-> **This skill targets ooRexx 5.3.0beta.** It was written and
-> tested against that release branch. The *version* is pinned on
-> purpose: the SourceForge layout and the official download page
-> are not dependable enough to automate a "latest version" lookup,
-> and a newer major/minor line may behave differently. The *build*
-> within that branch is not pinned — use the most recent build of
-> `5.3.0beta` unless the user asks for a specific one. If you need
-> a different version entirely, adjust the steps accordingly.
 
 > **Environment note.** This skill is consumed by more than one
 > project. The download and verification steps are universal; the
@@ -25,35 +16,65 @@ description: >
 > path are environment-specific — substitute the values that match
 > the machine you are installing on.
 
+## Which ooRexx
+
+There are three choices. **Install the tested revision unless the
+user asks for another one.**
+
+| Choice | Version | SourceForge folder | When |
+|---|---|---|---|
+| **Tested** (default) | 5.3.0 beta, build **r13282** | `oorexx/5.3.0beta/` | Always, unless the user says otherwise |
+| Latest | 5.3.0 beta, the most recent build | `oorexx/5.3.0beta/` | The user asks for the latest build, or needs a fix newer than the tested revision |
+| Release | **5.2.0**, build r13156 | `oorexx/5.2.0/` | The user asks for the released (non-beta) ooRexx |
+
+- **Tested** is the revision the maintainers of this collection have
+  tested their own ooRexx projects against (r13282 since 21 October
+  2026). 5.3.0 is a beta; its builds come from the development
+  trunk, and this one is known to be good.
+- **Latest** is the newest build in the `5.3.0beta` folder. Builds
+  appear there as the trunk moves, sometimes several a day, and are
+  not individually tested: use it only when asked.
+- **Release** is the latest official release. Some features of
+  5.3.0 are missing (for example `.LogicalWrapper`); use it only
+  when asked, or when the code must run on the released version.
+
+The packages are named
+`oorexx-<version>-<build>.<distro>.<arch>.deb`, e.g.
+`oorexx-5.3.0-13282.ubuntu2404.x86_64.deb` (tested),
+`oorexx-5.2.0-13156.ubuntu2404.x86_64.deb` (release). Confirm your
+distro with `cat /etc/os-release` if unsure.
+
 ## Installation
 
 ooRexx is installed from an official `.deb` published by the Rexx
 Language Association on SourceForge.
 
-1. **Choose the build and the matching package.** In the
-   `5.3.0beta` folder on SourceForge —
-   `https://sourceforge.net/projects/oorexx/files/oorexx/5.3.0beta/` —
-   pick the `.deb` for your distribution and architecture with the
-   **most recent build number** (`rNNNNN`), *unless the user
-   requested a specific build*, in which case use that one. Within
-   this single pinned folder the files are all the same version, so
-   "most recent build" is unambiguous (sort by date) — this is
-   safe in a way that picking the folder itself is not. The
-   filename has the form
-   `oorexx-5.3.0-<build>.<distro>.<arch>.deb`, e.g.
-   `oorexx-5.3.0-13169.ubuntu2404.x86_64.deb`. Confirm your distro
-   with `cat /etc/os-release` if unsure.
-
-2. **Download from the direct mirror, not the `/download`
-   redirector.** SourceForge's `/download` URL returns an HTML
-   interstitial page (~130 KB of HTML, not the binary). Use the
-   `master.dl.sourceforge.net` mirror with a browser user-agent
-   (substitute the filename you chose in step 1):
+1. **Choose the package** for your choice above, distribution and
+   architecture. For **latest**, find the most recent build for
+   your distribution in the folder's listing (builds for the
+   different platforms appear over a few hours, so the newest
+   number may not exist yet for yours):
 
    ```bash
-   curl -L -f -A "Mozilla/5.0" -o /tmp/oorexx.deb \
-     "https://master.dl.sourceforge.net/project/oorexx/oorexx/5.3.0beta/oorexx-5.3.0-13169.ubuntu2404.x86_64.deb?viasf=1"
+   curl -sL https://sourceforge.net/projects/oorexx/files/oorexx/5.3.0beta/ \
+     | grep -o 'oorexx-5\.3\.0-1[0-9]*\.ubuntu2404\.x86_64\.deb' | sort -u | tail -1
    ```
+
+2. **Download from `downloads.sourceforge.net`** (it redirects to a
+   mirror that serves the binary), with the folder and the file
+   name of step 1:
+
+   ```bash
+   curl -L -f -o /tmp/oorexx.deb \
+     "https://downloads.sourceforge.net/project/oorexx/oorexx/5.3.0beta/oorexx-5.3.0-13282.ubuntu2404.x86_64.deb"
+   ```
+
+   For the release, the folder is `5.2.0` and the file
+   `oorexx-5.2.0-13156.ubuntu2404.x86_64.deb`. Do not use the
+   `/download` links of the SourceForge web pages: they return an
+   HTML page, not the binary. The `master.dl.sourceforge.net` mirror
+   is no use either: it now redirects to plain `http://`, which
+   proxies may refuse.
 
 3. **Verify it's really a `.deb` before installing** (catches the
    case where you got an HTML error page instead):
@@ -66,7 +87,9 @@ Language Association on SourceForge.
    If `file` reports HTML, the download served an error page rather
    than the binary — recheck the URL.
 
-4. **Install:** `dpkg -i /tmp/oorexx.deb`
+4. **Install:** `dpkg -i /tmp/oorexx.deb`. Installing another
+   package later replaces the one installed (both ways: beta to
+   release and back).
 
 **Fallback (network blocked, e.g. proxy 403).** Ask the user to
 upload the `.deb` and install from the upload — adjusting the path
@@ -74,8 +97,9 @@ to wherever uploads land in your environment (in Claude's
 container that is `/mnt/user-data/uploads/`):
 `dpkg -i /path/to/uploads/oorexx-*.deb`.
 
-Verify the interpreter runs: `rexx -v` → `Open Object Rexx Version
-5.3.0`.
+**Verify the interpreter runs, and that it is the build you
+chose:** `rexx -v` → `Open Object Rexx Version 5.3.0 r13282` (for
+the release, `5.2.0 r13156`).
 
 ## Running programs
 

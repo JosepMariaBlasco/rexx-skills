@@ -21,8 +21,9 @@ and idioms for strings, stems, and line endings.
 
 Works with: Claude.
 
-[**oorexx-run**](oorexx-run.md) — Install and run ooRexx. Pinned to the 5.3.0beta
-branch; covers downloading the right `.deb` from SourceForge,
+[**oorexx-run**](oorexx-run.md) — Install and run ooRexx. Three choices:
+the tested 5.3.0 beta revision (the default), the latest beta build,
+or the 5.2.0 release; covers downloading the right `.deb` from SourceForge,
 verifying it, the `::Requires` lookup order, and the common errors.
 
 Works with: Claude.
