@@ -36,15 +36,15 @@ and Linux case-sensitivity gotchas.
 
 Works with: Claude.
 
-[**rexxhttp**](rexxhttp.md) — Serve ooRexx servlets over Apache with
+[**rexxhttp**](rexxhttp.md) — Serve ooRexx rexxlets over Apache with
 [the RexxHTTP processor](https://rexx.epbcn.com/rexxhttp/).
-Requires [`apache-cgi-oorexx`](apache-cgi-oorexx.md)
-(and through it [`oorexx-run`](oorexx-run.md));
-covers a basic sample installation,
-the Apache wiring, end-to-end verification with curl,
-and the traps that bite when writing servlets
-(the frozen invocation contract, non-short-circuit &, the JSON ::Requires,
-case-sensitivity).
+Requires [`oorexx-run`](oorexx-run.md);
+covers the automated installer and the installation by hand,
+verification with curl and the package's integration suite,
+the request/response API (arguments, cookies, lazy headers, errors and redirects),
+and the traps that bite when writing rexxlets
+(non-short-circuit &, the JSON ::Requires, case-sensitivity,
+what is served as source).
 
 Works with: Claude.
 

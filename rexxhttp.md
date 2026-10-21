@@ -1,255 +1,243 @@
-# RexxHTTP — Serving Servlets
+---
+name: rexxhttp
+description: >
+  How to install RexxHTTP (ooRexx rexxlets served by Apache over CGI),
+  with its automated installer or by hand, verify it, and write
+  rexxlets: the request/response API, lazy headers, and the traps.
+  Read this whenever you need to serve ooRexx programs as web pages.
+---
 
-> **This skill targets RexxHTTP 1.0**, running on **ooRexx 5.3.0 or
-> later** and **Apache 2.4 or later** with the `cgid` and `actions`
-> modules. It was written and tested against that combination.
+# RexxHTTP — Serving Rexxlets
+
+> **This skill targets RexxHTTP 1.0** (the package
+> `rexxhttp-latest.zip` of 30 July 2026; its manual, `rexxhttp.pdf`,
+> edition 2026.07.10), which needs **ooRexx 5.2.0 or later** and
+> **Apache 2.4** with the `cgid` (or `cgi`) and `actions` modules.
+> Every step below was run on 21 October 2026 on Ubuntu 24.04,
+> Apache 2.4.58, ooRexx 5.3.0 r13282.
 >
-> **Requires the `apache-cgi-oorexx` skill**, which in turn requires
-> `oorexx-run`. This skill assumes you already have ooRexx installed
-> (`rexx -v` works) and Apache serving ooRexx CGI scripts. It does *not*
-> repeat that setup — do those two first. What this skill adds is the
-> RexxHTTP processor on top: deploying its sources, wiring Apache to it,
-> writing a servlet, and verifying the whole pipeline answers.
+> **Requires `oorexx-run`** (ooRexx installed, `rexx -v` works).
+> Apache is installed here, by the installer or by hand.
 >
-> **Environment note.** The paths below (`/var/www/html/...`) and the
-> commands (`apt`, `a2enconf`, `/var/log/apache2/`) assume a
-> Debian/Ubuntu Apache layout. Substitute the locations that match your
-> machine.
+> **Environment note.** The paths and commands (`apt-get`, `a2enmod`,
+> `/usr/lib/cgi-bin`, `/var/www/html`, `/var/log/apache2/`) are those
+> of Debian and Ubuntu. The manual covers macOS (Homebrew) and Windows
+> (Apache Lounge) too. Run as root, or prefix the commands with `sudo`.
 
 ## What RexxHTTP is
 
-RexxHTTP is a servlet processor for ooRexx: a servlet is an ordinary
-ooRexx program that receives a `request` and a `response` object and
-produces its body with plain `Say` or `CharOut`. The processor builds
-those objects, runs your servlet, and flushes the response. The central
-design idea is *lazy headers* — you can write body content before fixing
-the response headers, and they are emitted on the first flush.
+A processor for **rexxlets**: ordinary ooRexx programs served as web
+pages by Apache over CGI. A rexxlet receives a `request` and a
+`response` object (also in the environment as `.request` and
+`.response`) and writes its body with plain `Say` or `CharOut`. The
+central idea is *lazy headers*: the body is buffered, so a rexxlet can
+write body before it sets headers; everything is sent at the first
+flush (normally the processor's, when the rexxlet ends).
 
-The pipeline, end to end: Apache routes a request to a one-line **wrapper**,
-which `Call`s `RexxHTTP.rex` (the processor); the processor builds the
-request/response objects, runs the servlet named by the request path, and
-flushes. You configure that route once; after that, adding a servlet is
-one line.
+The pipeline: Apache's `Action` routes a request for a rexxlet to the
+processor, `RexxHTTP.rex`, which builds the two objects, runs the
+rexxlet, and flushes. The manual (`rexxhttp.pdf`, in the package) is
+the reference; this skill follows its *Installation* chapter.
 
 ## 1. Get the package
 
-The sources are distributed as a zip. Download it, and extract the
-processor sources plus one example servlet to use for verification:
-
-```
+```bash
 curl -sO https://rexx.epbcn.com/rexxhttp/rexxhttp-latest.zip
 unzip -qo rexxhttp-latest.zip -d /tmp/rexxhttp
 ```
 
-You need two things from it: everything under `src/` (the processor
-`RexxHTTP.rex` and its four classes — they load each other via
-`::Requires`, so they travel together) and one servlet to test with.
-Each example is a servlet file named `index` inside its own subfolder, so
-the hello-world servlet is `examples/hello-world/index` — a one-liner
-(`Say "Hello, world!"`) and ideal for verification. (Don't confuse it with
-`examples/index`, which is the examples catalogue, not a servlet.)
+`src/` holds the processor and its classes; `install/` the automated
+installer; `examples/` the examples; `tests/http/` the integration
+suite.
 
-## 2. Deploy the processor and the wrapper
+## 2a. Install with the automated installer (a clean machine)
 
-The processor sources live in one directory; the servlets you serve live
-in another. Deploy the five sources, then create the wrapper:
+For a machine **without Apache**: it installs Apache, deploys
+RexxHTTP, plants a welcome page and the examples, and checks that the
+result serves a request. If Apache is already installed, it stops
+without changing anything: install by hand (2b).
 
-```
-sudo mkdir -p /var/www/html/RexxHTTP
-sudo cp /tmp/rexxhttp/src/RexxHTTP.rex \
-        /tmp/rexxhttp/src/HTTP.Request.cls \
-        /tmp/rexxhttp/src/HTTP.Response.cls \
-        /tmp/rexxhttp/src/HTTP.OutputStream.cls \
-        /tmp/rexxhttp/src/HTTP.Cookie.cls \
-        /var/www/html/RexxHTTP/
+```bash
+cd /tmp/rexxhttp/install
+rexx install --yes          # --yes: no prompts; --help lists the options
 ```
 
-The **wrapper** is a one-line ooRexx script whose only job is to `Call`
-the processor. It must be saved with **LF** line endings and have a clean
-`#!` shebang, because the kernel exec's *it* directly:
+It ends with `SUCCESS: a minimal RexxHTTP installation is up and
+running`. Check it:
 
-```
-sudo tee /var/www/html/RexxHTTP/wrapper > /dev/null << 'WRAP'
-#!/usr/bin/env rexx
-Call "/var/www/html/RexxHTTP/RexxHTTP.rex"
-WRAP
-sudo chmod 755 /var/www/html/RexxHTTP/wrapper
+```bash
+curl -s http://localhost/                            # the welcome page (itself a rexxlet)
+curl -s http://localhost/examples/hello-world-plain/ # → Hello, world!
 ```
 
-Why the wrapper at all: the `.rex`/`.cls` sources are stored and checked
-out as **CRLF** (they are edited on Windows; ooRexx reads CRLF fine). A
-kernel cannot exec a script whose `#!` line ends in CR — it would look
-for `/usr/bin/env rexx\r` and fail with `not found` (exit 127). The
-wrapper sidesteps this: its own shebang is clean LF, and `RexxHTTP.rex`
-is reached through `Call`, never exec'd, so its CRLF shebang is just an
-inert comment. Do **not** "fix" the sources to LF — keep them CRLF and
-let the wrapper do its job.
+What it leaves, on Debian/Ubuntu: the processor in `/usr/lib/cgi-bin/`
+(its shebang pinned to the `rexx` it found), the site in
+`/var/www/html/`, and `/etc/apache2/conf-available/rexxhttp.conf`, where
+**any `*.rxl` file is a rexxlet** (`AddHandler RexxHTTP .rxl`),
+`DirectoryIndex` is `wrapper.rxl index.rxl readme.md`, `.md` files go
+through a Markdown renderer and `.rex`/`.cls` files through a source
+viewer (their source is shown, on purpose). `REXXHTTP_BASE` and
+`REXXHTTP_URLBASE` are set for that layout (section 2b explains them).
+A new rexxlet is then just a file `something.rxl` in the site.
 
-## 3. Deploy a servlet
+`--port N` changes the port when 80 is taken. To undo the
+installation (it removes Apache too, unless `--keep-apache`):
 
-Servlets live in their own directory, gated by a whitelist `.htaccess`:
-
-```
-sudo mkdir -p /var/www/html/test
-sudo cp /tmp/rexxhttp/examples/hello-world/index /var/www/html/test/hello-world
-```
-
-The `.htaccess` lists *exactly* which files are handled as servlets;
-everything else in the directory is served as a static file. This is a
-whitelist on purpose — see the warning under "Adding more servlets".
-
-```
-sudo tee /var/www/html/test/.htaccess > /dev/null << 'HT'
-<Files hello-world>
-  SetHandler RexxHTTPCGI
-</Files>
-HT
+```bash
+cd /usr/local/share/rexxhttp && rexx uninstall --yes
 ```
 
-## 4. Configure Apache
+The manual also documents the Rexx Highlighter option (the installer
+records the Rexx Parser's location if it finds it at install time).
 
-This wires Apache to the processor. The `Action` points at the
-**wrapper**, never at `RexxHTTP.rex` directly (for the CRLF-shebang
-reason above). Write it as a conf snippet and enable it:
+## 2b. Install by hand
 
+When Apache is already there, or to place each piece yourself. These
+are the manual's steps for Debian/Ubuntu.
+
+**Apache**, with the two modules:
+
+```bash
+apt-get install -y apache2
+a2enmod cgid actions
+service apache2 restart
 ```
-sudo tee /etc/apache2/conf-available/rexxhttp.conf > /dev/null << 'CONF'
-ServerName localhost
 
-<Directory "/var/www/html/RexxHTTP">
+This recipe uses Debian's own `/cgi-bin/` (the `serve-cgi-bin`
+configuration, enabled by default, maps it to `/usr/lib/cgi-bin/`), so
+**leave `serve-cgi-bin` enabled** here (the `apache-cgi-oorexx` skill
+disables it for its own `/cgi-bin/`; the two set-ups do not mix).
+
+**The sources:** everything in `src/` goes to `/usr/lib/cgi-bin/`,
+together (the processor finds its classes there), and the processor
+must be executable:
+
+```bash
+cp /tmp/rexxhttp/src/*.rex /tmp/rexxhttp/src/*.cls /usr/lib/cgi-bin/
+chmod +x /usr/lib/cgi-bin/RexxHTTP.rex
+```
+
+That is six files today: `RexxHTTP.rex`, `HTTP.Request.cls`,
+`HTTP.Response.cls`, `HTTP.OutputStream.cls`, `HTTP.Cookie.cls`, and
+`RexxHTTP.CommonRoutines.cls` (an empty home for helper routines; the
+manual still says five files). `RexxHTTP.rex` starts with
+`#!/usr/bin/env rexx`, so `rexx` must be on the `PATH` Apache gives
+its CGI programs (it is, with SourceForge's `.deb`, which installs
+`/usr/local/bin/rexx`); if not, pin the shebang to the interpreter's
+absolute path.
+
+**Which files are rexxlets.** The handler is declared once, and each
+rexxlet is whitelisted by name; everything else in the directory is
+served as a static file:
+
+```bash
+cat > /etc/apache2/conf-available/rexxhttp.conf << 'CONF'
+Action RexxHTTP /cgi-bin/RexxHTTP.rex
+<Directory "/var/www/html">
     Options +ExecCGI
-    AddHandler cgi-script .rex
-    Require all granted
-</Directory>
-
-ScriptAlias /RexxHTTP/ /var/www/html/RexxHTTP/
-
-# Action points at the wrapper (one-line LF Rexx that Calls RexxHTTP.rex),
-# not at RexxHTTP.rex directly: the wrapper's LF shebang keeps the kernel
-# happy, and RexxHTTP.rex is reached via Call so its CRLF shebang is inert.
-Action RexxHTTPCGI /RexxHTTP/wrapper
-
-<Directory "/var/www/html/test">
-    AllowOverride All
-    Options +ExecCGI
-    Require all granted
+    DirectoryIndex index
+    <Files "index">
+        SetHandler RexxHTTP
+    </Files>
 </Directory>
 CONF
-sudo a2enconf rexxhttp
-sudo service apache2 restart
+a2enconf rexxhttp
+service apache2 reload
 ```
 
-`AllowOverride All` on the servlet directory is what lets the `.htaccess`
-take effect. Without it, the whitelist is ignored and your servlets are
-served as static text.
+Each further rexxlet is one more `<Files>` block. The same blocks work
+in an `.htaccess` file inside the directory, **only if** the
+`<Directory>` allows it (`AllowOverride All`); otherwise the
+`.htaccess` is ignored and the rexxlet's source is served as text.
 
-## 5. Verify
+**Smoke test.** Put a rexxlet named `index` in `/var/www/html/`:
 
-Request the servlet. You should get **HTTP 200** and the body:
-
-```
-curl -s -i http://127.0.0.1/test/hello-world
-```
-
-Expected:
-
-```
-HTTP/1.1 200 OK
-...
-Content-Type: text/plain; charset=utf-8
-
-Hello, world!
+```bash
+printf '.response~content_type = "text/plain"\nSay "Hola, mundo"\n' > /var/www/html/index
+curl -s http://localhost/        # → Hola, mundo
 ```
 
-Note the response convention: **headers are CRLF, the body is LF** (per
-RFC for the headers; the body carries whatever the servlet wrote). A
-plain `Say` produces `text/plain; charset=utf-8` by default — a servlet
-sets `response~content_type = "text/html"` when it wants HTML.
+**`REXXHTTP_BASE` and `REXXHTTP_URLBASE`** (`SetEnv` in the
+`<Directory>`) matter only when a rexxlet is reached as an *action* for
+a resource that lives elsewhere (as the installer's Markdown renderer
+is). `BASE` is the zone's root on disk; `URLBASE` is the URL prefix in
+front of it that `BASE` does not already include: `*` when there is
+none (the document root), `/prefix` for a subdirectory or an `Alias`.
+Never leave `URLBASE` empty: with `BASE` set, an empty `URLBASE` is a
+500. The manual's table *Three installation geometries* has the cases.
 
-If you get the *source code* of the servlet back instead of `Hello,
-world!`, the `.htaccess` is not taking effect — check `AllowOverride All`
-and that `actions` is enabled. If you get a 500, look in
-`/var/log/apache2/error.log`.
+## 3. Verify with the integration suite
 
-## Adding more servlets
+The package's own suite stands up a throwaway Apache montage, runs
+182 tests through Apache and curl, and removes what it created.
+**Stop Apache first**: the runner starts Apache with `apachectl start`,
+which does nothing to a server that is already running, so its
+configuration is never loaded and most tests fail (151 of 182).
 
-This is where the two-directory montage pays off. To add a servlet, drop
-the file in `/var/www/html/test/` and add one stanza to the `.htaccess`:
-
+```bash
+service apache2 stop
+cd /tmp/rexxhttp && rexx tests/http/RunHTTPTests.rex   # → Tests ran: 182, Failures: 0
 ```
-<Files my-servlet>
-  SetHandler RexxHTTPCGI
-</Files>
+
+## Writing rexxlets
+
+A rexxlet is an ordinary ooRexx program: no class to subclass, no
+entry point. `Use Arg request, response` names the two objects (or use
+`.request` and `.response`).
+
+```rexx
+.response~content_type = "text/plain"   -- the default: text/plain; charset=utf-8
+Say "Hello, world"
 ```
 
-`.htaccess` is read per request, so a new servlet is live immediately —
-**no Apache reload**. The existing servlets keep working untouched.
+- **Arguments** (the query string of a GET, the form of a POST) come
+  through `arg`, modelled on the built-in ARG: `.request~arg()` is the
+  count; `.request~arg("q")` the value of `q` (by name, caseless) and
+  `.request~arg(2)` the second one; a second argument chooses `Value`
+  (the default), `Name`, `Exists` or `Omitted`. Names and values arrive
+  decoded. A request with a malformed or duplicated parameter (`?q=1&Q=2`)
+  gets **400** and never reaches the rexxlet.
+- **Cookies:** `c = .HTTP.Cookie~new("session"); c~value = "abc";
+  c~path = "/"; .response~addcookie(c)`. Read them back with
+  `.request~cookie("session", "Value")` (case-sensitive, unlike `arg`).
+- **Headers** are message names: `.response~x_late_header = "yes"`
+  sends `X-Late-Header: yes` (underscores become hyphens), even after
+  body was written, as long as nothing was flushed. After a flush a
+  header assignment raises an error.
+- **Errors and redirects**, as the last statement:
+  `Exit .response~error(404, "no such record")`,
+  `Exit .response~redirect("/elsewhere/")` (302 by default).
+- **Escaping:** `.response~encodeHTML(text)` for anything external you
+  echo into HTML; also `encodeURIComponent`, `encodeURI`, `encodeForm`,
+  and on the request `decodeURIComponent`, `decodeForm`.
 
-**The whitelist is a safety boundary, not a formality.** A file that is
-*not* listed is served as a static file — its source code goes out
-verbatim. Never rely on "it's in the servlets directory" to mean "it
-runs": if it is not in the `.htaccess`, its source is public. List every
-servlet, and keep nothing secret in that directory that is not listed.
+The traps:
 
-## Writing servlets — traps that bite
-
-A servlet is ordinary ooRexx, but a few non-obvious rules will catch you:
-
-- **The invocation contract is frozen.** A servlet receives
-  `Use Arg request, response`; `.request` and `.response` also exist in
-  the environment; `Say` and `CharOut` write the body. Production
-  servlets rely on this exactly — don't expect a different signature.
-
-- **Line endings: `.rex`/`.cls` are CRLF, the wrapper is LF.** Keep the
-  processor sources CRLF (ooRexx reads them fine; the wrapper protects the
-  exec path). Only the wrapper must be LF.
-
-- **`&` does not short-circuit in ooRexx.** For an "exists *and* matches"
-  guard, use a comma in the `If`, not `&`:
-  `If request~exists("q"), request~arg("q") \== "" Then`. With `&` both
-  sides evaluate and a missing value blows up at runtime — and a test
-  outside Apache may not reproduce it.
-
-- **JSON needs its own `::Requires`.** `.json` is not one of the four
-  classes the processor loads. A servlet that parses or builds JSON must
-  end with `::Requires "json.cls"`, or it dies with *Error 97, method not
-  found*. (A `Signal On Syntax` handler can mask this as a parse failure —
-  if JSON "won't parse", check the requires first.)
-
-- **Linux is case-sensitive.** `::Requires "HTTP.Request.cls"` must match
-  the filename on disk exactly. `http.request.cls` is a different file.
-
-- **Output encoding.** The response object offers encoders for output
-  (`encodeHTML` for the five HTML entities `& < > " '`,
-  `encodeURIComponent`, `encodeURI`, `encodeForm`) and the request offers
-  the matching decoders (`decodeURIComponent`, `decodeForm`). Escape any
-  external value you echo into a page with `encodeHTML`. See the manual's
-  Class Reference for the full set.
+- **`&` does not short-circuit in ooRexx.** For "exists and is not
+  empty", use a comma in the `If`:
+  `If .request~arg("q", "Exists"), .request~arg("q") \== "" Then`.
+- **JSON needs its own `::Requires "json.cls"`**: the processor does not
+  load it. Without it: `Error 97.1: Object ".JSON" does not understand
+  message "NEW"`.
+- **Linux is case-sensitive**: `::Requires` and `Call` must name files
+  exactly as on disk.
+- **What is not a rexxlet is served as it is.** With the whitelist
+  (2b), a file left out of the `<Files>` blocks is sent as static text,
+  source included; with the installer's layout (2a), `.rex` and `.cls`
+  files are shown as highlighted source by design. Keep nothing secret
+  in the served directories.
 
 ## Common errors
 
-- **Servlet source served instead of run** — `.htaccess` not taking
-  effect. Check `AllowOverride All` on the servlet `<Directory>`, that the
-  file is listed in the whitelist, and that `a2enmod actions` was run.
-- **500, `error.log` shows exit 127 / "not found"** — the CRLF-shebang
-  trap. The `Action` is pointing at `RexxHTTP.rex` directly, or the
-  wrapper was saved CRLF. The wrapper must be LF and the `Action` must
-  point at it.
-- **500, `Error 43: Routine not found`** — a source did not deploy. All
-  five files (`RexxHTTP.rex` + the four `HTTP.*.cls`) must sit together in
-  the processor directory.
-- **500, `Error 97: ... json`** — a JSON servlet without
-  `::Requires "json.cls"`. Add it.
-- **404 from the processor itself** — `RexxHTTP.rex` guards against being
-  run as a servlet directly and returns 404. Requests must go through the
-  wrapper to a servlet, not to the processor.
-
-## A full deployment, for reference
-
-The montage above is the real two-directory pattern, kept minimal. For a
-complete, multi-servlet deployment with environment overrides and an
-automated montage — the same shape, exercised end to end — see
-`tests/http/` in the package: `RunHTTPTests.rex` deploys the five sources
-plus the wrapper, writes this exact Apache configuration, and runs a suite
-of fixture servlets against the live stack. Its `readme.md` documents the
-montage and the fixtures.
+- **The rexxlet's source comes back instead of its output**: it is not
+  marked as a rexxlet (missing from the `<Files>` whitelist, an
+  `.htaccess` without `AllowOverride`, or a file without `.rxl` in the
+  installer's layout).
+- **500, `End of script output before headers`** in
+  `/var/log/apache2/error.log`: Apache cannot run `RexxHTTP.rex` (no
+  execute bit, or `rexx` not on Apache's `PATH`).
+- **A page headed `Internal server error`** with an ooRexx traceback:
+  the rexxlet itself failed; the traceback says where.
+- **404 when requesting `/cgi-bin/RexxHTTP.rex`**: by design; the
+  processor answers 404 when called directly, not through a rexxlet.
+- **400**: a malformed or duplicated request argument.
