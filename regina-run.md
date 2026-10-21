@@ -53,6 +53,13 @@ or
 regina script.rex [args...]
 ```
 
+**With ooRexx on the same machine, call it `regina`.** Regina's
+package installs `/usr/bin/rexx` (a link to `rexx-regina-rexx`), but
+ooRexx's package installs `/usr/local/bin/rexx`, which comes first in
+the usual `PATH`: a bare `rexx` then runs ooRexx (`parse version`
+says `REXX-ooRexx_5.3.0...`, not `REXX-Regina_3.9.5...`). Use
+`regina`, or the full path `/usr/bin/rexx` (in a shebang, say).
+
 **Path note.** Regina resolves a bare script name through its
 search path, not the current directory. If `.` is not on your
 `PATH`, `regina hello.rex` fails with `Error 3.1: Program was not
