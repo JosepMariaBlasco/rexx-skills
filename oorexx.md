@@ -280,13 +280,19 @@ say 'b'               -- never appears
 ```
 
 If the intent is an empty line, write `Say ''` (or
-`Call LineOut , ''`).
+`Call LineOut , ''`). If the intent is to flush standard output,
+flush it without closing it: `.output~flush` (or
+`.stream~new('STDOUT')~flush`).
 
 ### 14. A `RANDOM` seed does not reach a `::Routine`
 
 Seeding with `Random(min, max, seed)` makes the following calls
-repeatable in the code that seeded, but not inside a `::Routine` it
-calls: there, `Random` gives different values on every run.
+repeatable in the code that seeded, but not inside a `::Routine` or
+a `::Method` it calls: there, `Random` gives different values on
+every run. Each call of a routine or method starts a generator of
+its own, so a seed given in one call does not carry to the next
+call either; and the calls consume nothing from the caller's
+sequence.
 
 ```rexx
 x = random(1, 1000, 42)
@@ -298,7 +304,8 @@ exit
 ```
 
 For a repeatable sequence inside a routine, seed inside the
-routine (or pass the random values to it as arguments).
+routine, on every call (or pass the random values to it as
+arguments).
 
 ---
 
