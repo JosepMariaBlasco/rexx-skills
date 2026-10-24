@@ -263,6 +263,43 @@ What fails is putting the `label:` *inside* the block. If you need a
 jump target near loop logic, hoist it out of the block — or extract
 the logic into a separate routine.
 
+### 13. `Call LineOut` with no arguments closes standard output
+
+With no stream name, `LineOut` acts on the default output stream,
+and with no line it closes that stream. So a bare `Call LineOut`
+closes standard output for the **whole program**, even when it runs
+inside a `::Routine`: from then on nothing more reaches stdout —
+not `Say`, not `LineOut 'STDOUT'`, not `.output~lineOut` — and
+there is no error; the program ends with return code 0. Standard
+error still works.
+
+```rexx
+say 'a'
+call lineout          -- closes stdout
+say 'b'               -- never appears
+```
+
+If the intent is an empty line, write `Say ''` (or
+`Call LineOut , ''`).
+
+### 14. A `RANDOM` seed does not reach a `::Routine`
+
+Seeding with `Random(min, max, seed)` makes the following calls
+repeatable in the code that seeded, but not inside a `::Routine` it
+calls: there, `Random` gives different values on every run.
+
+```rexx
+x = random(1, 1000, 42)
+say random(1, 1000)   -- the same on every run
+say draw()            -- different on every run
+exit
+::routine draw
+  return random(1, 1000)
+```
+
+For a repeatable sequence inside a routine, seed inside the
+routine (or pass the random values to it as arguments).
+
 ---
 
 ## Best practices

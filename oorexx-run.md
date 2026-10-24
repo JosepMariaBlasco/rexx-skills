@@ -87,15 +87,34 @@ Language Association on SourceForge.
    If `file` reports HTML, the download served an error page rather
    than the binary — recheck the URL.
 
-4. **Install:** `dpkg -i /tmp/oorexx.deb`. Installing another
-   package later replaces the one installed (both ways: beta to
-   release and back).
+4. **Install, then refresh the library cache:**
+
+   ```bash
+   dpkg -i /tmp/oorexx.deb && ldconfig
+   ```
+
+   The package runs no `ldconfig` of its own. `rexx` does not need
+   it (it finds its libraries through its RUNPATH,
+   `$ORIGIN/../lib`), but anything else that loads `librexx.so.4`
+   does: a Python bridge, a native extension, a C program linked
+   against the API. Without `ldconfig` they fail with
+   `librexx.so.4: cannot open shared object file`. Installing
+   another package later replaces the one installed (both ways:
+   beta to release and back); run `ldconfig` again after it.
 
 **Fallback (network blocked, e.g. proxy 403).** Ask the user to
-upload the `.deb` and install from the upload — adjusting the path
-to wherever uploads land in your environment (in Claude's
-container that is `/mnt/user-data/uploads/`):
-`dpkg -i /path/to/uploads/oorexx-*.deb`.
+upload the `.deb` and install from the upload. Where uploads land
+depends on the environment; in Claude's containers they have been
+seen in `/mnt/user-data/uploads/`, and in
+`/mnt/user-data/attachments/<session>/` or
+`/root/.claude/uploads/<session>/` with a prefix added to the file
+name. Look in all three:
+
+```bash
+DEB=$(find -H /mnt/user-data/uploads /mnt/user-data/attachments /root/.claude/uploads \
+        -name '*oorexx-*.deb' 2>/dev/null | head -1)
+dpkg -i "$DEB" && ldconfig
+```
 
 **Verify the interpreter runs, and that it is the build you
 chose:** `rexx -v` → `Open Object Rexx Version 5.3.0 r13286` (for
@@ -127,4 +146,8 @@ To add a directory: `export REXX_PATH="/path/to/libs"`
   Check that the `.cls` exists at the expected path.
 - **"Error 98: Execution error"** — a `::Requires` failed to load.
   Read the full error, it usually includes the failing path.
-- **Shared library errors** — `apt-get install -f`.
+- **"librexx.so.4: cannot open shared object file"** (from Python,
+  a native extension or a program linked against ooRexx, while
+  `rexx` itself works) — the library cache was not refreshed after
+  installing: `ldconfig`.
+- **Other shared library errors** — `apt-get install -f`.
