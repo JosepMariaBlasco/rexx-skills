@@ -2,7 +2,7 @@
 name: oorexx-run
 description: >
   How to install and run ooRexx. Three choices: the tested 5.3.0
-  beta revision (r13297, the default), the latest 5.3.0 beta build,
+  beta revision (r13312, the default), the latest 5.3.0 beta build,
   or the 5.2.0 release. Covers installation from SourceForge,
   running programs, the ::Requires search path, and common errors.
   Read this whenever you need to install or execute ooRexx code.
@@ -23,12 +23,12 @@ user asks for another one.**
 
 | Choice | Version | SourceForge folder | When |
 |---|---|---|---|
-| **Tested** (default) | 5.3.0 beta, build **r13297** | `oorexx/5.3.0beta/` | Always, unless the user says otherwise |
+| **Tested** (default) | 5.3.0 beta, build **r13312** | `oorexx/5.3.0beta/` | Always, unless the user says otherwise |
 | Latest | 5.3.0 beta, the most recent build | `oorexx/5.3.0beta/` | The user asks for the latest build, or needs a fix newer than the tested revision |
 | Release | **5.2.0**, build r13156 | `oorexx/5.2.0/` | The user asks for the released (non-beta) ooRexx |
 
 - **Tested** is the revision the maintainers of this collection have
-  tested their own ooRexx projects against (r13297 since 25 October
+  tested their own ooRexx projects against (r13312 since 27 October
   2026). 5.3.0 is a beta; its builds come from the development
   trunk, and this one is known to be good.
 - **Latest** is the newest build in the `5.3.0beta` folder. Builds
@@ -40,7 +40,7 @@ user asks for another one.**
 
 The packages are named
 `oorexx-<version>-<build>.<distro>.<arch>.deb`, e.g.
-`oorexx-5.3.0-13297.ubuntu2404.x86_64.deb` (tested),
+`oorexx-5.3.0-13312.ubuntu2404.x86_64.deb` (tested),
 `oorexx-5.2.0-13156.ubuntu2404.x86_64.deb` (release). Confirm your
 distro with `cat /etc/os-release` if unsure.
 
@@ -66,7 +66,7 @@ Language Association on SourceForge.
 
    ```bash
    curl -L -f -o /tmp/oorexx.deb \
-     "https://downloads.sourceforge.net/project/oorexx/oorexx/5.3.0beta/oorexx-5.3.0-13297.ubuntu2404.x86_64.deb"
+     "https://downloads.sourceforge.net/project/oorexx/oorexx/5.3.0beta/oorexx-5.3.0-13312.ubuntu2404.x86_64.deb"
    ```
 
    For the release, the folder is `5.2.0` and the file
@@ -117,7 +117,7 @@ dpkg -i "$DEB" && ldconfig
 ```
 
 **Verify the interpreter runs, and that it is the build you
-chose:** `rexx -v` → `Open Object Rexx Version 5.3.0 r13297` (for
+chose:** `rexx -v` → `Open Object Rexx Version 5.3.0 r13312` (for
 the release, `5.2.0 r13156`).
 
 ## Running programs
