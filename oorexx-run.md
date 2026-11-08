@@ -31,6 +31,13 @@ user asks for another one.**
   tested their own ooRexx projects against (r13379 since 5 November
   2026). 5.3.0 is a beta; its builds come from the development
   trunk, and this one is known to be good.
+- **When the tested build is gone.** SourceForge keeps only the most
+  recent builds of each distribution in the `5.3.0beta` folder (on 8
+  November 2026, the last five for `ubuntu2404`: r13407 to r13421),
+  so the tested build can disappear from it within days. The tested
+  revision is then the *minimum*: install the **oldest** build of
+  your distribution still in the folder (it is newer than the tested
+  one), and tell the user which build you installed and why.
 - **Latest** is the newest build in the `5.3.0beta` folder. Builds
   appear there as the trunk moves, sometimes several a day, and are
   not individually tested: use it only when asked.
@@ -50,14 +57,16 @@ ooRexx is installed from an official `.deb` published by the Rexx
 Language Association on SourceForge.
 
 1. **Choose the package** for your choice above, distribution and
-   architecture. For **latest**, find the most recent build for
-   your distribution in the folder's listing (builds for the
+   architecture. For **latest**, and for **tested** when its build
+   is gone, list the builds for your distribution in the folder's
+   listing (the last line is the latest, the first the oldest still
+   there; for tested, check first whether its build is listed) (builds for the
    different platforms appear over a few hours, so the newest
    number may not exist yet for yours):
 
    ```bash
    curl -sL https://sourceforge.net/projects/oorexx/files/oorexx/5.3.0beta/ \
-     | grep -o 'oorexx-5\.3\.0-1[0-9]*\.ubuntu2404\.x86_64\.deb' | sort -u | tail -1
+     | grep -o 'oorexx-5\.3\.0-1[0-9]*\.ubuntu2404\.x86_64\.deb' | sort -u
    ```
 
 2. **Download from `downloads.sourceforge.net`** (it redirects to a
@@ -118,7 +127,8 @@ dpkg -i "$DEB" && ldconfig
 
 **Verify the interpreter runs, and that it is the build you
 chose:** `rexx -v` → `Open Object Rexx Version 5.3.0 r13379` (for
-the release, `5.2.0 r13156`).
+the release, `5.2.0 r13156`; for a build that replaced a vanished
+tested one, its own number).
 
 ## Running programs
 
