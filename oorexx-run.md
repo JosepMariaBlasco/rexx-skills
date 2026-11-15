@@ -2,7 +2,7 @@
 name: oorexx-run
 description: >
   How to install and run ooRexx. Three choices: the tested 5.3.0
-  beta revision (r13379, the default), the latest 5.3.0 beta build,
+  beta revision (r13514, the default), the latest 5.3.0 beta build,
   or the 5.2.0 release. Covers installation from SourceForge,
   running programs, the ::Requires search path, and common errors.
   Read this whenever you need to install or execute ooRexx code.
@@ -23,12 +23,12 @@ user asks for another one.**
 
 | Choice | Version | SourceForge folder | When |
 |---|---|---|---|
-| **Tested** (default) | 5.3.0 beta, build **r13379** | `oorexx/5.3.0beta/` | Always, unless the user says otherwise |
+| **Tested** (default) | 5.3.0 beta, build **r13514** | `oorexx/5.3.0beta/` | Always, unless the user says otherwise |
 | Latest | 5.3.0 beta, the most recent build | `oorexx/5.3.0beta/` | The user asks for the latest build, or needs a fix newer than the tested revision |
 | Release | **5.2.0**, build r13156 | `oorexx/5.2.0/` | The user asks for the released (non-beta) ooRexx |
 
 - **Tested** is the revision the maintainers of this collection have
-  tested their own ooRexx projects against (r13379 since 5 November
+  tested their own ooRexx projects against (r13514 since 15 November
   2026). 5.3.0 is a beta; its builds come from the development
   trunk, and this one is known to be good.
 - **When the tested build is gone.** SourceForge keeps only the most
@@ -42,12 +42,13 @@ user asks for another one.**
   appear there as the trunk moves, sometimes several a day, and are
   not individually tested: use it only when asked.
 - **Release** is the latest official release. Some features of
-  5.3.0 are missing (for example `.LogicalWrapper`); use it only
-  when asked, or when the code must run on the released version.
+  5.3.0 are missing (for example `.LogicalWrapper` and the CATCH
+  clauses); use it only when asked, or when the code must run on the
+  released version.
 
 The packages are named
 `oorexx-<version>-<build>.<distro>.<arch>.deb`, e.g.
-`oorexx-5.3.0-13379.ubuntu2404.x86_64.deb` (tested),
+`oorexx-5.3.0-13514.ubuntu2404.x86_64.deb` (tested),
 `oorexx-5.2.0-13156.ubuntu2404.x86_64.deb` (release). Confirm your
 distro with `cat /etc/os-release` if unsure.
 
@@ -75,7 +76,7 @@ Language Association on SourceForge.
 
    ```bash
    curl -L -f -o /tmp/oorexx.deb \
-     "https://downloads.sourceforge.net/project/oorexx/oorexx/5.3.0beta/oorexx-5.3.0-13379.ubuntu2404.x86_64.deb"
+     "https://downloads.sourceforge.net/project/oorexx/oorexx/5.3.0beta/oorexx-5.3.0-13514.ubuntu2404.x86_64.deb"
    ```
 
    For the release, the folder is `5.2.0` and the file
@@ -126,7 +127,7 @@ dpkg -i "$DEB" && ldconfig
 ```
 
 **Verify the interpreter runs, and that it is the build you
-chose:** `rexx -v` → `Open Object Rexx Version 5.3.0 r13379` (for
+chose:** `rexx -v` → `Open Object Rexx Version 5.3.0 r13514` (for
 the release, `5.2.0 r13156`; for a build that replaced a vanished
 tested one, its own number).
 
