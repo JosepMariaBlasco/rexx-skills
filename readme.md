@@ -70,6 +70,17 @@ rebuilding after an edit, and the traps that bite
 
 Works with: Claude.
 
+[**md2slides.md**](md2slides.md) — Write, convert and check slide decks in md2slides Markdown, the
+slide format of RexxPub (the Rexx Parser's publishing tools): one
+Markdown file in, one self-contained HTML deck out, with Rexx code
+highlighted by the Rexx Parser. Covers the shape of a deck, the
+`.` lines (steps, layout, code, marks, arrows), the patterns a
+lecture uses, and the rules that save a rebuild. Read this whenever
+a deck, slides or a lecture is to be written for md2slides; the
+deliverable is the .md file, not a .pptx or an HTML file.
+
+Works with: Claude.
+
 ### Regina-specific skills
 
 [**regina-run**](regina-run.md) — Install and run Regina, the
