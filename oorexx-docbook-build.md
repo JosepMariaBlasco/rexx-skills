@@ -4,10 +4,10 @@ description: >
   How to build an ooRexx documentation book (DocBook, the official
   bldoc_orx scripts, Apache FOP) to PDF and to chunked HTML, with
   Rexx syntax highlighting, on Linux: the hl* scripts (hldocprep,
-  hldoc2pdf, hldoc2HTML) plus the Rexx Parser. Covers getting the
-  sources over svn, the build, rebuilding after an edit, marking
-  listings for highlighting, and the traps. Read this whenever you
-  need to build an ooRexx book, official or your own.
+  hldoc2pdf, hldoc2HTML) plus the Rexx Parser that comes with ooRexx.
+  Covers getting the sources over svn, the build, rebuilding after an
+  edit, marking listings for highlighting, and the traps. Read this
+  whenever you need to build an ooRexx book, official or your own.
 ---
 
 # Building ooRexx books (with highlighting)
@@ -17,14 +17,16 @@ in the documentation tree's `tools/bldoc_orx/`: to PDF through
 `xsltproc` and Apache FOP, and to chunked HTML through the DocBook
 XHTML stylesheets. The **hl\* series** in the same folder (`hldocprep`,
 `hldoc2fo`, `hldoc2pdf`, `hldoc2HTML`) does the same and also colours
-the Rexx listings, using the Rexx Highlighter of the Rexx Parser. The
-result looks like the official books (cover, colours, admonitions).
+the Rexx listings, using the Rexx Highlighter of the Rexx Parser, which
+comes with ooRexx since 5.3.0 r13572. The result looks like the
+official books (cover, colours, admonitions).
 
-> **Tested** on 21 October 2026 on Ubuntu 24.04 with ooRexx 5.3.0
-> r13282, the documentation trunk's `tools/bldoc_orx` (last changed in
-> SVN r13235), the Rexx Parser's `Rexx-Parser-latest.zip` of that day,
-> FOP 2.8 and docbook-xsl 1.79: the RexxHTTP manual (83 pages of PDF,
-> 182 HTML pages) built with no errors.
+> **Tested** on 21 November 2026 on Ubuntu 24.04 with ooRexx 5.3.0
+> r13572 (built from SVN trunk), the documentation trunk's
+> `tools/bldoc_orx` (last changed in SVN r13574), FOP 2.8 and
+> docbook-xsl 1.79.2: the RexxHTTP manual (83 pages of PDF, 183 HTML
+> pages) built with no errors, with the parser of ooRexx alone and with
+> a Rexx Parser release on `REXX_PATH`.
 >
 > **Requires `oorexx-run`** (the whole toolchain runs on ooRexx). If a
 > book builds railroad diagrams from EBNF, that is a separate step: see
@@ -53,8 +55,16 @@ result looks like the official books (cover, colours, admonitions).
    local copy through the system XML catalog: no network is needed for
    the build.
 
-3. **The Rexx Parser**, from its canonical site (it carries the latest
-   fixes before GitHub does):
+3. **The Rexx Parser** comes with ooRexx 5.3.0 r13572 or later:
+   `parser.cls`, its `parser/` folder and the styles (`parser/css/`)
+   are installed next to `rexx`, and the scripts find them there.
+   Nothing to do. The pieces of the toolchain that are not the parser
+   (`Parser.DocBook.cls`, `css2xsl.rex`, `style-chooser.js`) live in
+   `tools/bldoc_orx/` since r13574.
+
+   With an older ooRexx, or to use a newer parser than the one ooRexx
+   has, take a release from its canonical site (it carries the latest
+   fixes before GitHub does) and put its `bin/` on `REXX_PATH`:
 
    ```bash
    curl -sLO https://rexx.epbcn.com/rexx-parser/Rexx-Parser-latest.zip
@@ -62,9 +72,8 @@ result looks like the official books (cover, colours, admonitions).
    export REXX_PATH=/work/rexx-parser/bin
    ```
 
-   Only its `bin/` has to be on `REXX_PATH` (or `PATH`); the HTML build
-   finds the Parser's `css/` and `js/` from there. Nothing is copied
-   into the build scripts.
+   The scripts then use that parser, and its styles (`css/`). The
+   parser must have `.Rexx.Parser~version` (0.7 20261121 or later).
 
 4. **The documentation tree**, laid out as the scripts expect: each
    book in `$DOCS/<book>/` (with `publican.cfg` and `en-US/`), and the
@@ -96,7 +105,7 @@ result looks like the official books (cover, colours, admonitions).
 
 ## Build
 
-From `/work/bldoc_orx`, with `REXX_PATH` set as above:
+From `/work/bldoc_orx`:
 
 ```bash
 rexx hldoc2pdf <book>        # → pdf_files/<book>.pdf
@@ -109,10 +118,13 @@ Common_Content into `work_folder/`) and then highlights every
 `<programlisting language="rexx">` and generates the XSL the PDF and the
 HTML need (`hl-styles/`, `rexx-highlights.xsl`, `pdf-hl.xsl`,
 `rexx-highlights-html.xsl`, `html-hl.xsl`, all in the scripts'
-folder). Its log says what it did:
+folder). Its log says which parser it used, and what it did:
 
 ```
-44 block(s) highlighted in 6 file(s).
+- Using the Rexx Parser 0.7 20261121 from /usr/local/bin.
+- Using /work/bldoc_orx/Parser.DocBook.cls.
+- Using /work/bldoc_orx/css2xsl.rex.
+45 block(s) highlighted in 6 file(s).
 1 style(s) found: print.
 ```
 
@@ -200,14 +212,16 @@ Content itself, `doc2fo` is `xsltproc` with `pdf.xsl`, `fo2pdf` is
   does not parse (a fragment out of context, say an `Expose` outside a
   method, or a dialect's syntax: try `dialect=`). The block is left
   uncoloured and the build goes on.
-- **`hldocprep` cannot find the Rexx Parser** ("Please ensure that the
-  Rexx Parser's bin/ directory is on your PATH or REXX_PATH"): set
-  `REXX_PATH` as in the setup, in the same shell.
+- **`hldocprep` cannot find the Rexx Parser** ("The Rexx Parser is not
+  installed or not in the search path"): the ooRexx is older than
+  r13572. Update it, or set `REXX_PATH` to a release as in the setup,
+  in the same shell. "the Rexx Parser in ... is too old": the parser in
+  use has no `.Rexx.Parser~version`; same remedy.
 - **FOP cannot overwrite a PDF that is open** in a reader: close it
   before rebuilding.
 - In the browser console of the HTML, `ReferenceError: $ is not
   defined` comes from the official XHTML stylesheets, in a plain build
   too. Harmless.
 
-The Parser documents all of this in more depth in
+The Rexx Parser documents all of this in more depth in
 `doc/highlighter/docbook/readme.md` (in its zip).
