@@ -25,7 +25,7 @@ Works with: Claude.
 [**oorexx-run**](oorexx-run.md) — Install and run ooRexx. Three choices:
 the tested 5.3.0 beta revision (the default), the latest beta build,
 or the 5.2.0 release; covers downloading the right `.deb` from SourceForge,
-verifying it, refreshing the library cache (`ldconfig`) for anything that loads `librexx`, the `::Requires` lookup order, and the common errors.
+verifying it, refreshing the library cache (`ldconfig`) for anything that loads `librexx`, the `::Requires` lookup order, the Rexx Parser that comes with 5.3.0, and the common errors.
 
 Works with: Claude.
 

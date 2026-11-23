@@ -2,7 +2,7 @@
 name: oorexx-run
 description: >
   How to install and run ooRexx. Three choices: the tested 5.3.0
-  beta revision (r13532, the default), the latest 5.3.0 beta build,
+  beta revision (r13591, the default), the latest 5.3.0 beta build,
   or the 5.2.0 release. Covers installation from SourceForge,
   running programs, the ::Requires search path, and common errors.
   Read this whenever you need to install or execute ooRexx code.
@@ -23,17 +23,17 @@ user asks for another one.**
 
 | Choice | Version | SourceForge folder | When |
 |---|---|---|---|
-| **Tested** (default) | 5.3.0 beta, build **r13532** | `oorexx/5.3.0beta/` | Always, unless the user says otherwise |
+| **Tested** (default) | 5.3.0 beta, build **r13591** | `oorexx/5.3.0beta/` | Always, unless the user says otherwise |
 | Latest | 5.3.0 beta, the most recent build | `oorexx/5.3.0beta/` | The user asks for the latest build, or needs a fix newer than the tested revision |
 | Release | **5.2.0**, build r13156 | `oorexx/5.2.0/` | The user asks for the released (non-beta) ooRexx |
 
 - **Tested** is the revision the maintainers of this collection have
-  tested their own ooRexx projects against (r13532 since 16 November
+  tested their own ooRexx projects against (r13591 since 22 November
   2026). 5.3.0 is a beta; its builds come from the development
   trunk, and this one is known to be good.
 - **When the tested build is gone.** SourceForge keeps only the most
-  recent builds of each distribution in the `5.3.0beta` folder (on 16
-  November 2026, the last five for `ubuntu2404`: r13517 to r13532),
+  recent builds of each distribution in the `5.3.0beta` folder (on 23
+  November 2026, the last six for `ubuntu2404`: r13572 to r13591),
   so the tested build can disappear from it within days. The tested
   revision is then the *minimum*: install the **oldest** build of
   your distribution still in the folder (it is newer than the tested
@@ -43,12 +43,12 @@ user asks for another one.**
   not individually tested: use it only when asked.
 - **Release** is the latest official release. Some features of
   5.3.0 are missing (for example `.LogicalWrapper` and the CATCH
-  and FINALLY clauses); use it only when asked, or when the code must
+  and FINALLY clauses, THROW, and the Rexx Parser); use it only when asked, or when the code must
   run on the released version.
 
 The packages are named
 `oorexx-<version>-<build>.<distro>.<arch>.deb`, e.g.
-`oorexx-5.3.0-13532.ubuntu2404.x86_64.deb` (tested),
+`oorexx-5.3.0-13591.ubuntu2404.x86_64.deb` (tested),
 `oorexx-5.2.0-13156.ubuntu2404.x86_64.deb` (release). Confirm your
 distro with `cat /etc/os-release` if unsure.
 
@@ -76,7 +76,7 @@ Language Association on SourceForge.
 
    ```bash
    curl -L -f -o /tmp/oorexx.deb \
-     "https://downloads.sourceforge.net/project/oorexx/oorexx/5.3.0beta/oorexx-5.3.0-13532.ubuntu2404.x86_64.deb"
+     "https://downloads.sourceforge.net/project/oorexx/oorexx/5.3.0beta/oorexx-5.3.0-13591.ubuntu2404.x86_64.deb"
    ```
 
    For the release, the folder is `5.2.0` and the file
@@ -127,7 +127,7 @@ dpkg -i "$DEB" && ldconfig
 ```
 
 **Verify the interpreter runs, and that it is the build you
-chose:** `rexx -v` → `Open Object Rexx Version 5.3.0 r13532` (for
+chose:** `rexx -v` → `Open Object Rexx Version 5.3.0 r13591` (for
 the release, `5.2.0 r13156`; for a build that replaced a vanished
 tested one, its own number).
 
@@ -137,6 +137,16 @@ Scripts: `rexx script.rex [args...]`
 
 To check that a `.cls` loads without errors:
 `rexx -e "Call 'path/to/file.cls'"`
+
+## The Rexx Parser
+
+Since r13570 the Rexx Parser and Highlighter are part of ooRexx 5.3.0
+(`extensions/parser`). The `.deb` installs `parser.cls` and its
+`parser/` directory in `/usr/local/bin`, on the default search path, so
+a program needs only `::Requires "parser.cls"` (checked on r13591:
+`.Rexx.Parser~new(name, source)` works with nothing else installed). If
+the same machine also has a clone of the Parser's own repository on the
+path, make sure the one that loads is the one you mean.
 
 ## Dependency lookup (::Requires)
 
