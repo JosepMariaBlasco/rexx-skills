@@ -50,10 +50,10 @@ what is served as source).
 Works with: Claude.
 
 [**ebnf2svg**](ebnf2svg.md) — Generate one SVG railroad diagram per production
-from a W3C-style EBNF grammar. Covers the toolchain (the Java-based Railroad Diagram
-Generator rr.war plus two ooRexx scripts), where to download each piece,
-prerequisites, usage and the no-extension argument convention, the EBNF notation,
-and how the orchestrator chains generation and SVG extraction.
+from a W3C-style EBNF grammar with `ebnf2svg.rex`, the pure-ooRexx generator of the
+ooRexx documentation (no Java). Covers where to get it, prerequisites, usage and
+options, the EBNF notation (with `$` for defaults, drawn above the main path as in
+the IBM syntax diagrams), and what the diagrams look like.
 
 Works with: Claude.
 
