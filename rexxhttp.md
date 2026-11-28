@@ -10,11 +10,14 @@ description: >
 # RexxHTTP — Serving Rexxlets
 
 > **This skill targets RexxHTTP 1.0** (the package
-> `rexxhttp-latest.zip` of 30 July 2026; its manual, `rexxhttp.pdf`,
-> edition 2026.07.10), which needs **ooRexx 5.2.0 or later** and
-> **Apache 2.4** with the `cgid` (or `cgi`) and `actions` modules.
-> Every step below was run on 21 October 2026 on Ubuntu 24.04,
-> Apache 2.4.58, ooRexx 5.3.0 r13282.
+> `rexxhttp-latest.zip`; its manual, `rexxhttp.pdf`), which needs
+> **ooRexx 5.3.0 r13572 or later** (the first revision that carries
+> the Rexx Parser, which RexxHTTP highlights with; the installer
+> refuses older interpreters) and **Apache 2.4** with the `cgid` (or
+> `cgi`) and `actions` modules. Every step below was run on 21 October
+> 2026 on Ubuntu 24.04, Apache 2.4.58, ooRexx 5.3.0 r13282; the
+> automated installer (2a) again on 28 November 2026 with the package
+> of that day and ooRexx 5.3.0 r13591.
 >
 > **Requires `oorexx-run`** (ooRexx installed, `rexx -v` works).
 > Apache is installed here, by the installer or by hand.
@@ -87,8 +90,9 @@ installation (it removes Apache too, unless `--keep-apache`):
 cd /usr/local/share/rexxhttp && rexx uninstall --yes
 ```
 
-The manual also documents the Rexx Highlighter option (the installer
-records the Rexx Parser's location if it finds it at install time).
+The source viewer and the Markdown renderer highlight with the Rexx
+Parser that comes with ooRexx (`parser.cls`, r13570 or later): there is
+nothing to install apart.
 
 ## 2b. Install by hand
 
